@@ -1,0 +1,82 @@
+{
+	"name": "df_silver_warranty",
+	"properties": {
+		"folder": {
+			"name": "SILVER"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_sql_bronze_warranty",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_sql_silver_warranty",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "aggregate1"
+				},
+				{
+					"name": "filter1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          claim_id as string,",
+				"          claim_date as string,",
+				"          sale_id as string,",
+				"          repair_status as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> source1",
+				"source1 derive(claim_date = toDate(claim_date),",
+				"          repair_status = trim(repair_status),",
+				"          sale_id = trim(sale_id)) ~> derivedColumn1",
+				"derivedColumn1 aggregate(groupBy(claim_id),",
+				"     claim_date = first(claim_date),",
+				"          sale_id = first(sale_id),",
+				"          repair_status = first(repair_status)) ~> aggregate1",
+				"aggregate1 filter(not(isNull(claim_id)) && not(isNull(claim_date))) ~> filter1",
+				"filter1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          claim_id as string,",
+				"          claim_date as date,",
+				"          sale_id as string,",
+				"          repair_status as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          claim_id,",
+				"          claim_date,",
+				"          sale_id,",
+				"          repair_status",
+				"     )) ~> sink1"
+			]
+		}
+	}
+}
