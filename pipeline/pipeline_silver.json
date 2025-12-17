@@ -55,7 +55,7 @@
 					"scripts": [
 						{
 							"type": "NonQuery",
-							"text": "DROP TABLE IF EXISTS [silver].[category];\nCREATE TABLE [silver].[category] (\n    [category_id] VARCHAR(50) PRIMARY KEY, -- Ya definimos llave primaria\n    [category_name] VARCHAR(100),\n    [extra_note] VARCHAR(255)\n);\n\n-- ---------------------------------------------------------\n-- TABLA PRODUCTS (Silver)\n-- Limpieza esperada: Fechas reales, Precios numéricos\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [silver].[products];\nCREATE TABLE [silver].[products] (\n    [product_id] VARCHAR(50) PRIMARY KEY,\n    [product_name] VARCHAR(200),\n    [category_id] VARCHAR(50),\n    [launch_date] DATE,           -- Aquí ya debe llegar como fecha (YYYY-MM-DD)\n    [price] DECIMAL(10, 2),       -- Importante: Dinero con 2 decimales\n    [notes] VARCHAR(100)\n);\n\n-- ---------------------------------------------------------\n-- TABLA STORES (Silver)\n-- Limpieza esperada: Año 'opened' como número (corregir '20O9')\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [silver].[stores];\nCREATE TABLE [silver].[stores] (\n    [store_id] VARCHAR(50) PRIMARY KEY,\n    [store_name] VARCHAR(200),\n    [city] VARCHAR(100),\n    [country] VARCHAR(100),\n    [opened] INT                  -- El año debe ser entero\n);\n\n-- ---------------------------------------------------------\n-- TABLA SALES (Silver)\n-- Limpieza esperada: Fechas estándar, cantidades numéricas\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [silver].[sales];\nCREATE TABLE [silver].[sales] (\n    [sale_id] VARCHAR(50) PRIMARY KEY,\n    [sale_date] DATE,             -- Fecha limpia\n    [store_id] VARCHAR(50),\n    [product_id] VARCHAR(50),\n    [quantity] INT                -- Número entero\n);\n\n-- ---------------------------------------------------------\n-- TABLA WARRANTY (Silver)\n-- Limpieza esperada: Estados estandarizados (Pending/Completed)\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [silver].[warranty];\nCREATE TABLE [silver].[warranty] (\n    [claim_id] VARCHAR(50) PRIMARY KEY,\n    [claim_date] DATE,\n    [sale_id] VARCHAR(50),\n    [repair_status] VARCHAR(50)\n);"
+							"text": "DROP TABLE IF EXISTS [silver].[category];\nCREATE TABLE [silver].[category] (\n    [category_id] VARCHAR(50) PRIMARY KEY, -- Ya definimos llave primaria\n    [category_name] VARCHAR(100),\n);\n\n-- ---------------------------------------------------------\n-- TABLA PRODUCTS (Silver)\n-- Limpieza esperada: Fechas reales, Precios numéricos\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [silver].[products];\nCREATE TABLE [silver].[products] (\n    [product_id] VARCHAR(50) PRIMARY KEY,\n    [product_name] VARCHAR(200),\n    [category_id] VARCHAR(50),\n    [launch_date] DATE,           -- Aquí ya debe llegar como fecha (YYYY-MM-DD)\n    [price] DECIMAL(10, 2),       -- Importante: Dinero con 2 decimales\n\n);\n\n-- ---------------------------------------------------------\n-- TABLA STORES (Silver)\n-- Limpieza esperada: Año 'opened' como número (corregir '20O9')\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [silver].[stores];\nCREATE TABLE [silver].[stores] (\n    [store_id] VARCHAR(50) PRIMARY KEY,\n    [store_name] VARCHAR(200),\n    [city] VARCHAR(100),\n    [country] VARCHAR(100),\n    [opened] INT                  -- El año debe ser entero\n);\n\n-- ---------------------------------------------------------\n-- TABLA SALES (Silver)\n-- Limpieza esperada: Fechas estándar, cantidades numéricas\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [silver].[sales];\nCREATE TABLE [silver].[sales] (\n    [sale_id] VARCHAR(50) PRIMARY KEY,\n    [sale_date] DATE,             -- Fecha limpia\n    [store_id] VARCHAR(50),\n    [product_id] VARCHAR(50),\n    [quantity] INT                -- Número entero\n);\n\n-- ---------------------------------------------------------\n-- TABLA WARRANTY (Silver)\n-- Limpieza esperada: Estados estandarizados (Pending/Completed)\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [silver].[warranty];\nCREATE TABLE [silver].[warranty] (\n    [claim_id] VARCHAR(50) PRIMARY KEY,\n    [claim_date] DATE,\n    [sale_id] VARCHAR(50),\n    [repair_status] VARCHAR(50)\n);"
 						}
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
@@ -93,78 +93,9 @@
 				}
 			},
 			{
-				"name": "df_silver_products",
-				"type": "ExecuteDataFlow",
-				"dependsOn": [
-					{
-						"activity": "df_silver_category",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"dataflow": {
-						"referenceName": "df_silver_products",
-						"type": "DataFlowReference"
-					},
-					"compute": {
-						"coreCount": 8,
-						"computeType": "General"
-					},
-					"traceLevel": "Fine"
-				}
-			},
-			{
-				"name": "df_silver_sales",
-				"type": "ExecuteDataFlow",
-				"dependsOn": [
-					{
-						"activity": "df_silver_products",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"dataflow": {
-						"referenceName": "df_silver_sales",
-						"type": "DataFlowReference"
-					},
-					"compute": {
-						"coreCount": 8,
-						"computeType": "General"
-					},
-					"traceLevel": "Fine"
-				}
-			},
-			{
 				"name": "df_silver_stores",
 				"type": "ExecuteDataFlow",
-				"dependsOn": [
-					{
-						"activity": "df_silver_sales",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
+				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
