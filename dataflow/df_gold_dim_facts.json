@@ -108,8 +108,7 @@
 				"          store_id,",
 				"          product_id,",
 				"          quantity,",
-				"          repair_status,",
-				"          claim_date",
+				"          repair_status",
 				"     )) ~> sink1"
 			]
 		}
