@@ -5,7 +5,14 @@
 			{
 				"name": "sql_gold",
 				"type": "Script",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Script1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -22,7 +29,7 @@
 					"scripts": [
 						{
 							"type": "NonQuery",
-							"text": "\nIF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'gold') \nBEGIN \n    EXEC('CREATE SCHEMA [gold]') \nEND\n\n\n-- DIM_PRODUCTS: Con el nombre de categoría y la fecha de lanzamiento\nDROP TABLE IF EXISTS [gold].[dim_products];\nSELECT \n    p.[product_id],\n    p.[product_name],\n    c.[category_name],\n    p.[launch_date],\n    p.[price]\nINTO [gold].[dim_products]\nFROM [silver].[products] p\nLEFT JOIN [silver].[category] c ON p.[category_id] = c.[category_id];\n\n\nDROP TABLE IF EXISTS [gold].[dim_stores];\nSELECT \n    [store_id],\n    [store_name],\n    [city],\n    [country],\n    [opened]\nINTO [gold].[dim_stores]\nFROM [silver].[stores];\n\n\n\nDROP TABLE IF EXISTS [gold].[fact_sales];\nSELECT \n    s.[sale_id],\n    s.[sale_date],\n    s.[store_id],\n    s.[product_id],\n    s.[quantity],\n    w.[claim_id],\n    w.[claim_date],\n    ISNULL(w.[repair_status], 'SIN RECLAMO') AS [repair_status]\nINTO [gold].[fact_sales]\nFROM [silver].[sales] s\nLEFT JOIN [silver].[warranty] w ON s.[sale_id] = w.[sale_id];"
+							"text": "-- ---------------------------------------------------------\n-- CARGA DIM_PRODUCTS\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [gold].[dim_products];\nSELECT \n    p.[product_id],\n    p.[product_name],\n    c.[category_name],\n    p.[launch_date],\n    p.[price]\nINTO [gold].[dim_products]\nFROM [silver].[products] p\nLEFT JOIN [silver].[category] c ON p.[category_id] = c.[category_id];\n\n-- ---------------------------------------------------------\n-- CARGA DIM_STORES\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [gold].[dim_stores];\nSELECT \n    [store_id],\n    [store_name],\n    [city],\n    [country],\n    [opened]\nINTO [gold].[dim_stores]\nFROM [silver].[stores];\n\n-- ---------------------------------------------------------\n-- CARGA FACT_SALES\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [gold].[fact_sales];\nSELECT \n    s.[sale_id],\n    s.[sale_date],\n    s.[store_id],\n    s.[product_id],\n    s.[quantity],\n    w.[claim_id],\n    w.[claim_date],\n    ISNULL(w.[repair_status], 'SIN RECLAMO') AS [repair_status]\nINTO [gold].[fact_sales]\nFROM [silver].[sales] s\nLEFT JOIN [silver].[warranty] w ON s.[sale_id] = w.[sale_id];"
 						}
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
@@ -95,7 +102,7 @@
 				"type": "ExecuteDataFlow",
 				"dependsOn": [
 					{
-						"activity": "df_gold_dim_stores",
+						"activity": "Script2",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -119,6 +126,65 @@
 						"computeType": "General"
 					},
 					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "Script1",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_sql_apple",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "-- 1. Crear el esquema Gold si no existe\nIF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'gold') \nBEGIN \n    EXEC('CREATE SCHEMA [gold]') \nEND\n\n-- ---------------------------------------------------------\n-- DIMENSION PRODUCTS (Gold)\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [gold].[dim_products];\nCREATE TABLE [gold].[dim_products] (\n    [product_id] VARCHAR(50) PRIMARY KEY,\n    [product_name] VARCHAR(200),\n    [category_name] VARCHAR(100),\n    [launch_date] DATE,\n    [price] DECIMAL(10, 2)\n);\n\n-- ---------------------------------------------------------\n-- DIMENSION STORES (Gold)\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [gold].[dim_stores];\nCREATE TABLE [gold].[dim_stores] (\n    [store_id] VARCHAR(50) PRIMARY KEY,\n    [store_name] VARCHAR(200),\n    [city] VARCHAR(100),\n    [country] VARCHAR(100),\n    [opened] INT\n);\n\n-- ---------------------------------------------------------\n-- FACT SALES (Gold)\n-- ---------------------------------------------------------\nDROP TABLE IF EXISTS [gold].[fact_sales];\nCREATE TABLE [gold].[fact_sales] (\n    [sale_id] VARCHAR(50) PRIMARY KEY,\n    [sale_date] DATE,\n    [store_id] VARCHAR(50),\n    [product_id] VARCHAR(50),\n    [quantity] INT,\n    [claim_id] VARCHAR(50),      -- Opcional, NULL si no hay reclamo\n    [claim_date] DATE,           -- Opcional, NULL si no hay reclamo\n    [repair_status] VARCHAR(50)  -- 'SIN RECLAMO' por default\n);"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Script2",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "df_gold_dim_stores",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_sql_apple",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "-- 1. Limpiamos la tabla Gold existente\nDROP TABLE IF EXISTS [gold].[fact_sales];\n\n-- 2. Creamos la tabla con filtros anti-duplicados\nWITH CleanWarranty AS (\n    -- Si hay más de un reclamo para la misma venta, nos quedamos solo con el último\n    SELECT *, \n    ROW_NUMBER() OVER(PARTITION BY sale_id ORDER BY claim_date DESC) as rn\n    FROM [silver].[warranty]\n)\nSELECT DISTINCT -- ← Tu seguro de vida para volver al 1,040,200\n    s.[sale_id],\n    s.[sale_date],\n    s.[store_id],\n    s.[product_id],\n    s.[quantity],\n    w.[claim_id],\n    w.[claim_date],\n    ISNULL(w.[repair_status], 'SIN RECLAMO') AS [repair_status]\nINTO [gold].[fact_sales]\nFROM [silver].[sales] s\nLEFT JOIN CleanWarranty w ON s.[sale_id] = w.[sale_id] AND w.rn = 1;\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
 				}
 			}
 		],
