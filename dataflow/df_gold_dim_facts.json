@@ -1,0 +1,117 @@
+{
+	"name": "df_gold_dim_facts",
+	"properties": {
+		"folder": {
+			"name": "GOLD"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_sql_silver_sales",
+						"type": "DatasetReference"
+					},
+					"name": "sourceSales"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_sql_silver_warranty",
+						"type": "DatasetReference"
+					},
+					"name": "sourceWarranty"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_sql_gold_fach_sales",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "join1"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "select1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          sale_id as string,",
+				"          sale_date as date,",
+				"          store_id as string,",
+				"          product_id as string,",
+				"          quantity as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> sourceSales",
+				"source(output(",
+				"          claim_id as string,",
+				"          claim_date as date,",
+				"          sale_id as string,",
+				"          repair_status as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> sourceWarranty",
+				"sourceSales, sourceWarranty join(sourceSales@sale_id == sourceWarranty@sale_id,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join1",
+				"join1 derive(repair_status = iif(isNull(repair_status), 'SIN RECLAMO', repair_status)) ~> derivedColumn1",
+				"derivedColumn1 select(mapColumn(",
+				"          sale_id = sourceSales@sale_id,",
+				"          sale_date,",
+				"          store_id,",
+				"          product_id,",
+				"          quantity,",
+				"          claim_id,",
+				"          claim_date,",
+				"          sale_id = sourceWarranty@sale_id,",
+				"          repair_status",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"select1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          sale_id as string,",
+				"          sale_date as date,",
+				"          store_id as string,",
+				"          product_id as string,",
+				"          quantity as integer,",
+				"          repair_status as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     recreate:true,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          sale_id,",
+				"          sale_date,",
+				"          store_id,",
+				"          product_id,",
+				"          quantity,",
+				"          repair_status,",
+				"          claim_date",
+				"     )) ~> sink1"
+			]
+		}
+	}
+}
