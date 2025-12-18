@@ -37,9 +37,6 @@
 				},
 				{
 					"name": "derivedColumn1"
-				},
-				{
-					"name": "select1"
 				}
 			],
 			"scriptLines": [
@@ -70,20 +67,7 @@
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> join1",
 				"join1 derive(repair_status = iif(isNull(repair_status), 'SIN RECLAMO', repair_status)) ~> derivedColumn1",
-				"derivedColumn1 select(mapColumn(",
-				"          sale_id = sourceSales@sale_id,",
-				"          sale_date,",
-				"          store_id,",
-				"          product_id,",
-				"          quantity,",
-				"          claim_id,",
-				"          claim_date,",
-				"          sale_id = sourceWarranty@sale_id,",
-				"          repair_status",
-				"     ),",
-				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> select1",
-				"select1 sink(allowSchemaDrift: true,",
+				"derivedColumn1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
 				"          sale_id as string,",
@@ -97,19 +81,10 @@
 				"     insertable:true,",
 				"     updateable:false,",
 				"     upsertable:false,",
-				"     recreate:true,",
 				"     format: 'table',",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
-				"     errorHandlingOption: 'stopOnFirstError',",
-				"     mapColumn(",
-				"          sale_id,",
-				"          sale_date,",
-				"          store_id,",
-				"          product_id,",
-				"          quantity,",
-				"          repair_status",
-				"     )) ~> sink1"
+				"     errorHandlingOption: 'stopOnFirstError') ~> sink1"
 			]
 		}
 	}

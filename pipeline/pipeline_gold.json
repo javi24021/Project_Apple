@@ -22,10 +22,103 @@
 					"scripts": [
 						{
 							"type": "NonQuery",
-							"text": "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'gold') \nBEGIN \n    EXEC('CREATE SCHEMA [gold]') \nEND\n\n-- DIM_PRODUCTS: Mantiene datos y trae el nombre de la Categoría\nDROP TABLE IF EXISTS [gold].[dim_products];\nSELECT \n    p.[product_id],\n    p.[product_name],\n    c.[category_name],\n    p.[price]\nINTO [gold].[dim_products]\nFROM [silver].[products] p\nLEFT JOIN [silver].[category] c ON p.[category_id] = c.[category_id];\n\n-- DIM_STORES: Información geográfica completa\nDROP TABLE IF EXISTS [gold].[dim_stores];\nSELECT \n    [store_id],\n    [store_name],\n    [city],\n    [country],\n    [opened]\nINTO [gold].[dim_stores]\nFROM [silver].[stores];\n\n-- FACT_SALES: Movimientos con la Cantidad original\nDROP TABLE IF EXISTS [gold].[fact_sales];\nSELECT \n    s.[sale_id],\n    s.[sale_date],\n    s.[store_id],\n    s.[product_id],\n    s.[quantity],\n    ISNULL(w.[repair_status], 'SIN RECLAMO') AS [repair_status]\nINTO [gold].[fact_sales]\nFROM [silver].[sales] s\nLEFT JOIN [silver].[warranty] w ON s.[sale_id] = w.[sale_id];"
+							"text": "\nIF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'gold') \nBEGIN \n    EXEC('CREATE SCHEMA [gold]') \nEND\n\n\n-- DIM_PRODUCTS: Con el nombre de categoría y la fecha de lanzamiento\nDROP TABLE IF EXISTS [gold].[dim_products];\nSELECT \n    p.[product_id],\n    p.[product_name],\n    c.[category_name],\n    p.[launch_date],\n    p.[price]\nINTO [gold].[dim_products]\nFROM [silver].[products] p\nLEFT JOIN [silver].[category] c ON p.[category_id] = c.[category_id];\n\n\nDROP TABLE IF EXISTS [gold].[dim_stores];\nSELECT \n    [store_id],\n    [store_name],\n    [city],\n    [country],\n    [opened]\nINTO [gold].[dim_stores]\nFROM [silver].[stores];\n\n\n\nDROP TABLE IF EXISTS [gold].[fact_sales];\nSELECT \n    s.[sale_id],\n    s.[sale_date],\n    s.[store_id],\n    s.[product_id],\n    s.[quantity],\n    w.[claim_id],\n    w.[claim_date],\n    ISNULL(w.[repair_status], 'SIN RECLAMO') AS [repair_status]\nINTO [gold].[fact_sales]\nFROM [silver].[sales] s\nLEFT JOIN [silver].[warranty] w ON s.[sale_id] = w.[sale_id];"
 						}
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "df_gold_dim_products",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "sql_gold",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "df_gold_dim_products",
+						"type": "DataFlowReference"
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "df_gold_dim_stores",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "df_gold_dim_products",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "df_gold_dim_stores",
+						"type": "DataFlowReference"
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "Data flow1",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "df_gold_dim_stores",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "df_gold_dim_facts",
+						"type": "DataFlowReference"
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
 				}
 			}
 		],
