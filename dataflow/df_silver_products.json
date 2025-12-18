@@ -149,6 +149,7 @@
 				"          product_id,",
 				"          product_name,",
 				"          category_id,",
+				"          launch_date,",
 				"          price",
 				"     )) ~> sink1"
 			]
