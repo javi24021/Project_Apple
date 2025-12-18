@@ -1,0 +1,157 @@
+{
+	"name": "df_silver_products",
+	"properties": {
+		"folder": {
+			"name": "SILVER"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "ds_sql_bronze_products",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				},
+				{
+					"dataset": {
+						"referenceName": "ds_sql_bronze_products",
+						"type": "DatasetReference"
+					},
+					"name": "DiccionarioMaestro"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ds_sql_silver_products",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "derivedColumn2"
+				},
+				{
+					"name": "derivedColumn3"
+				},
+				{
+					"name": "derivedColumn4"
+				},
+				{
+					"name": "aggregate1"
+				},
+				{
+					"name": "filter2"
+				},
+				{
+					"name": "lookup1"
+				},
+				{
+					"name": "derivedColumn5"
+				},
+				{
+					"name": "derivedColumn6"
+				},
+				{
+					"name": "derivedColumn7"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          product_id as string,",
+				"          product_name as string,",
+				"          category_id as string,",
+				"          launch_date as string,",
+				"          price as string,",
+				"          notes as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> source1",
+				"source(output(",
+				"          product_id as string,",
+				"          product_name as string,",
+				"          category_id as string,",
+				"          launch_date as string,",
+				"          price as string,",
+				"          notes as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     isolationLevel: 'READ_UNCOMMITTED',",
+				"     format: 'table') ~> DiccionarioMaestro",
+				"source1 derive(product_id = upper(trim(product_id)),",
+				"          product_name = initCap(trim(product_name)),",
+				"          category_id = upper(trim(category_id))) ~> derivedColumn1",
+				"derivedColumn1 derive(patterKey = iif(",
+				"    left(product_name, 5) == 'Apple',",
+				"    toString(split(product_name, ' ')[1]) + ' ' + toString(split(product_name, ' ')[2]),",
+				"    toString(split(product_name, ' ')[1])",
+				")) ~> derivedColumn2",
+				"DiccionarioMaestro derive(product_id = upper(trim(product_id)),",
+				"          product_name = initCap(trim(product_name)),",
+				"          category_id = upper(trim(category_id))) ~> derivedColumn3",
+				"derivedColumn3 derive(patterKey = iif(    left(product_name, 5) == 'Apple',    toString(split(product_name, ' ')[1]) + ' ' + toString(split(product_name, ' ')[2]),    toString(split(product_name, ' ')[1]))) ~> derivedColumn4",
+				"filter2 aggregate(groupBy(patterKey),",
+				"     categoriaMaestro = first(category_id)) ~> aggregate1",
+				"derivedColumn4 filter(!isNull(category_id)) ~> filter2",
+				"derivedColumn2, aggregate1 lookup(derivedColumn2@patterKey == aggregate1@patterKey,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> lookup1",
+				"lookup1 derive(category_id = iif(isNull(category_id), categoriaMaestro, category_id),",
+				"          product_name = replace(product_name, ',', '')) ~> derivedColumn5",
+				"derivedColumn5 derive(launch_date = coalesce(",
+				"    toDate(launch_date, 'yyyy-MM-dd'),",
+				"    toDate(launch_date, 'dd/MM/yyyy'),",
+				"    toDate(launch_date, 'MMMM dd yyyy'),",
+				"    toDate(launch_date, 'MMMM dd, yyyy'),",
+				"    toDate(launch_date, 'yyyy.MM.dd'),",
+				"    toDate(launch_date, 'dd-MM-yyyy'),",
+				"    toDate('1900-01-01')",
+				")) ~> derivedColumn6",
+				"derivedColumn6 derive(precioUnido = iif(isInteger(split(notes, ',')[1]), toString(price) + toString(split(notes, ',')[1]), toString(price)),",
+				"          product_name = upper(product_name),",
+				"          price = toDouble(",
+				"    replace(replace(replace(",
+				"        iif(instr(lower(toString(price)), 'one thousand') > 0, '1761', ",
+				"            iif(isInteger(split(notes, ',')[1]), toString(price) + split(notes, ',')[1], toString(price))",
+				"        ),",
+				"    '$', ''), ',', ''), '.', '')",
+				")) ~> derivedColumn7",
+				"derivedColumn7 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          product_id as string,",
+				"          product_name as string,",
+				"          category_id as string,",
+				"          launch_date as date,",
+				"          price as decimal(10,2),",
+				"          notes as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          product_id,",
+				"          product_name,",
+				"          category_id,",
+				"          price",
+				"     )) ~> sink1"
+			]
+		}
+	}
+}

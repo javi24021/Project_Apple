@@ -24,7 +24,29 @@
 					"name": "sink1"
 				}
 			],
-			"transformations": [],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "aggregate1"
+				},
+				{
+					"name": "derivedColumn2"
+				},
+				{
+					"name": "derivedColumn3"
+				},
+				{
+					"name": "derivedColumn4"
+				},
+				{
+					"name": "derivedColumn5"
+				},
+				{
+					"name": "cast1"
+				}
+			],
 			"scriptLines": [
 				"source(output(",
 				"          store_id as string,",
@@ -37,7 +59,36 @@
 				"     validateSchema: false,",
 				"     isolationLevel: 'READ_UNCOMMITTED',",
 				"     format: 'table') ~> source1",
-				"source1 sink(allowSchemaDrift: true,",
+				"source1 derive(store_id = upper(trim(store_id)),",
+				"          store_name = upper(trim(regexReplace(store_name, \"['\\\"]\", \"\"))),",
+				"          city = upper(trim(city)),",
+				"          country = upper(trim(regexReplace(country, \"['\\\"]\", \"\"))),",
+				"          opened = replace(upper(opened), 'O', '0')) ~> derivedColumn1",
+				"derivedColumn3 aggregate(groupBy(store_id),",
+				"     store_name = first(store_name),",
+				"          city = first(city),",
+				"          country = first(country),",
+				"          opened = first(opened)) ~> aggregate1",
+				"derivedColumn1 derive(store_name = iif(rlike(store_name, '^[0-9]+$'), 'APPLE STORE ' + city, upper(trim(regexReplace(store_name, \"['\\\\\\\"]\", \"\")))),",
+				"          city = iif(isNull(city) || city == '', split(store_name, ',')[2], upper(trim(city))),",
+				"          country = iif(isNull(country) || country == '', split(store_name, ',')[3], upper(trim(regexReplace(country, \"['\\\\\\\"]\", \"\")))),",
+				"          opened = iif(isNull(opened) || opened == '', ",
+				"    split(store_name, ',')[4], ",
+				"    replace(upper(toString(opened)), 'O', '0')",
+				")) ~> derivedColumn2",
+				"derivedColumn2 derive(store_name = iif(instr(store_name, ',') > 0, split(store_name, ',')[1], upper(trim(regexReplace(store_name, \"['\\\\\\\"]\", \"\"))))) ~> derivedColumn3",
+				"aggregate1 derive(city = coalesce(city, split(store_name, ' ')[2])) ~> derivedColumn4",
+				"derivedColumn4 derive(country = upper(trim(regexReplace(coalesce(country, city), \"['\\\\\\\"]\", \"\"))),",
+				"          city = regexReplace(city, \"'\", \"\"),",
+				"          opened = coalesce(",
+				"    iif(isNull(opened) || opened == '', split(store_name, ',')[4], replace(upper(toString(opened)), 'O', '0')), ",
+				"    '1900'",
+				")) ~> derivedColumn5",
+				"derivedColumn5 cast(output(",
+				"          opened as integer",
+				"     ),",
+				"     errors: true) ~> cast1",
+				"cast1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
 				"          store_id as string,",
@@ -58,7 +109,8 @@
 				"          store_id,",
 				"          store_name,",
 				"          city,",
-				"          country",
+				"          country,",
+				"          opened",
 				"     )) ~> sink1"
 			]
 		}

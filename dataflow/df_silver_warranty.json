@@ -32,7 +32,10 @@
 					"name": "aggregate1"
 				},
 				{
-					"name": "filter1"
+					"name": "derivedColumn2"
+				},
+				{
+					"name": "cast1"
 				}
 			],
 			"scriptLines": [
@@ -46,15 +49,30 @@
 				"     validateSchema: false,",
 				"     isolationLevel: 'READ_UNCOMMITTED',",
 				"     format: 'table') ~> source1",
-				"source1 derive(claim_date = toDate(claim_date),",
-				"          repair_status = trim(repair_status),",
-				"          sale_id = trim(sale_id)) ~> derivedColumn1",
+				"source1 derive(repair_status = upper(trim(regexReplace(repair_status, \"['\\\\\\\"]\", \"\"))),",
+				"          claim_id = upper(trim(regexReplace(claim_id, \"['\\\\\\\"]\", \"\"))),",
+				"          sale_id = upper(trim(regexReplace(sale_id, \"['\\\\\\\"]\", \"\")))) ~> derivedColumn1",
 				"derivedColumn1 aggregate(groupBy(claim_id),",
 				"     claim_date = first(claim_date),",
 				"          sale_id = first(sale_id),",
 				"          repair_status = first(repair_status)) ~> aggregate1",
-				"aggregate1 filter(not(isNull(claim_id)) && not(isNull(claim_date))) ~> filter1",
-				"filter1 sink(allowSchemaDrift: true,",
+				"aggregate1 derive(claim_date = coalesce(",
+				"    toDate(claim_date, 'yyyy-MM-dd'),",
+				"    toDate(claim_date, 'dd/MM/yyyy'),",
+				"    toDate(claim_date, 'MMMM dd yyyy'),",
+				"    toDate(claim_date, 'MMMM dd, yyyy'),",
+				"    toDate(claim_date, 'yyyy.MM.dd'),",
+				"    toDate(claim_date, 'dd-MM-yyyy'),",
+				"    toDate('1900-01-01')",
+				")) ~> derivedColumn2",
+				"derivedColumn2 cast(output(",
+				"          claim_id as string,",
+				"          claim_date as date,",
+				"          sale_id as string,",
+				"          repair_status as string",
+				"     ),",
+				"     errors: true) ~> cast1",
+				"cast1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
 				"          claim_id as string,",

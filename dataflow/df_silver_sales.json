@@ -24,7 +24,14 @@
 					"name": "sink1"
 				}
 			],
-			"transformations": [],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "derivedColumn2"
+				}
+			],
 			"scriptLines": [
 				"source(output(",
 				"          sale_id as string,",
@@ -37,7 +44,20 @@
 				"     validateSchema: false,",
 				"     isolationLevel: 'READ_UNCOMMITTED',",
 				"     format: 'table') ~> source1",
-				"source1 sink(allowSchemaDrift: true,",
+				"source1 derive(sale_id = upper(trim(regexReplace(sale_id, \"['\\\\\\\"]\", \"\"))),",
+				"          store_id = upper(trim(regexReplace(store_id, \"['\\\\\\\"]\", \"\"))),",
+				"          product_id = upper(trim(regexReplace(product_id, \"['\\\\\\\"]\", \"\")))) ~> derivedColumn1",
+				"derivedColumn1 derive(sale_date = coalesce(",
+				"    toDate(sale_date, 'yyyy-MM-dd'),",
+				"    toDate(sale_date, 'dd/MM/yyyy'),",
+				"    toDate(sale_date, 'MMMM dd yyyy'),",
+				"    toDate(sale_date, 'MMMM dd, yyyy'),",
+				"    toDate(sale_date, 'yyyy.MM.dd'),",
+				"    toDate(sale_date, 'dd-MM-yyyy'),",
+				"    toDate('1900-01-01')",
+				"),",
+				"          quantity = iif(isNull(quantity), 1, toInteger(quantity))) ~> derivedColumn2",
+				"derivedColumn2 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
 				"          sale_id as string,",
@@ -56,8 +76,10 @@
 				"     errorHandlingOption: 'stopOnFirstError',",
 				"     mapColumn(",
 				"          sale_id,",
+				"          sale_date,",
 				"          store_id,",
-				"          product_id",
+				"          product_id,",
+				"          quantity",
 				"     )) ~> sink1"
 			]
 		}
